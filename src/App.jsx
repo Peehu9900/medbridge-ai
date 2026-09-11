@@ -1,7 +1,8 @@
 import { useState } from "react";
-import Tesseract from "tesseract.js";
-import "./App.css";
 
+import Tesseract from "tesseract.js";
+
+import "./App.css";
 const medicineSuggestions = {
   Fever: {
     medicine: "Paracetamol (acetaminophen)",
@@ -43,6 +44,8 @@ const commonQuestions = [
   "Do you have any known allergies? If yes, please mention them.",
   "Do you have any previous medical history or illnesses? If yes, please mention them.",
   "Are you currently taking any medicines? If yes, please mention them.",
+  "Have you previously taken any AYUSH treatment? If yes, please mention it.",
+  "Are you currently using any AYUSH medicines or products? If yes, please mention them.",
 ];
 
 const adaptiveQuestions = {
@@ -124,6 +127,7 @@ const [rejected, setRejected] = useState(false);
 const [redFlag, setRedFlag] = useState(false);
 const [medicineApproved, setMedicineApproved] = useState(false);
 const [medicineRejected, setMedicineRejected] = useState(false);
+const [selectedDocument, setSelectedDocument] = useState(null);
   const symptoms = [
     "Fever",
     "Cough",
@@ -258,21 +262,21 @@ const handleDocumentUpload = async (event) => {
         });
 
         extractedText = result.data.text;
-      } catch (error) {
+} catch (error) {
         console.error("OCR failed:", error);
+
         extractedText = "OCR could not extract text.";
       }
-    } else {
-      extractedText =
-        "PDF OCR will be added in the next step.";
     }
 
-    processed.push({
-      name: file.name,
-      type: file.type,
-      extracted: true,
-      extractedText: extractedText,
-    });
+
+processed.push({
+  name: file.name,
+  type: file.type,
+  healthcareSystem: patient.healthcareSystem || "Not reported",
+  extracted: true,
+  extractedText: extractedText,
+});
   }
 
   setDocuments((previous) => [...previous, ...processed]);
@@ -283,6 +287,7 @@ const handleDocumentUpload = async (event) => {
       patient: patient.name,
       age: patient.age,
       gender: patient.gender || "Not reported",
+      healthcareSystem: patient.healthcareSystem || "Not reported",
       id: patient.id || "DEMO-" + Math.floor(Math.random() * 9000 + 1000),
       chiefComplaint:
         selectedSymptoms.length > 0
@@ -304,6 +309,12 @@ pastHistory:
 
 medications:
   answers[2]?.answer?.trim() || "No current medications reported.",
+
+  previousAyushTreatment:
+  answers[3]?.answer?.trim() || "Not reported",
+
+ayushMedicines:
+  answers[4]?.answer?.trim() || "Not reported",
       documents: documents.length,
 timeline: [
   {
@@ -407,6 +418,11 @@ setMedicineRejected(false);
                 through voice, touch, and previous medical documents before
                 meeting the doctor.
               </p>
+
+<div className="ayush-badge">
+  <span>AYUSH-INTEGRATED HEALTHCARE</span>
+  <p>Aligned with the vision of the Ministry of AYUSH</p>
+</div>
 
               <div className="welcome-actions">
                 <button className="primary-button" onClick={startIntake}>
@@ -543,7 +559,7 @@ setMedicineRejected(false);
                     <option>Prefer not to say</option>
                   </select>
                 </label>
-                
+
 <label>
   Preferred Healthcare System
   <select
@@ -797,13 +813,13 @@ setMedicineRejected(false);
                 <input
                   type="file"
                   multiple
-                  accept=".pdf,.jpg,.jpeg,.png"
+accept=".jpg,.jpeg,.png"
                   onChange={handleDocumentUpload}
                 />
 
                 <span className="upload-icon">📄</span>
                 <strong>Upload medical documents</strong>
-                <small>PDF, JPG, JPEG or PNG</small>
+<small>JPG, JPEG or PNG</small>
               </label>
 
               {documents.length > 0 && (
@@ -1128,14 +1144,18 @@ onClick={() => setScreen("patientPortal")}
   </strong>
 </div>
 
-      <div className="visit-details">
+<div className="visit-details">
+  <div>
+    <small>Chief Complaint</small>
+    <strong>{summary?.chiefComplaint || "Not reported"}</strong>
+  </div>
 
-        <div>
-          <small>Chief Complaint</small>
-          <strong>
-            {summary?.chiefComplaint || "Not reported"}
-          </strong>
-        </div>
+  <div>
+    <small>Healthcare System</small>
+    <strong>
+      {summary?.healthcareSystem || "Not reported"}
+    </strong>
+  </div>
 
         <div>
           <small>Documents</small>
@@ -1252,24 +1272,21 @@ onClick={() => setScreen("patientPortal")}
 
       ) : (
 
-        <div className="portal-document-list">
+<div className="portal-document-list">
+  {documents.map((document, index) => (
+    <div className="portal-document" key={index}>
+      <span>📄</span>
 
-          {documents.map((document, index) => (
-            <div
-              className="portal-document"
-              key={index}
-            >
-              <span>📄</span>
+      <div>
+        <strong>{document.name}</strong>
 
-              <div>
-                <strong>{document.name}</strong>
-
-                <small>✓ Processed</small>
-              </div>
-            </div>
-          ))}
-
-        </div>
+        <small>
+          ✓ Processed · {document.healthcareSystem || "Healthcare record"}
+        </small>
+      </div>
+    </div>
+  ))}
+</div>
 
       )}
 
@@ -1436,6 +1453,12 @@ onClick={() => setScreen("patientPortal")}
     )}
   </div>
 
+{/* HEALTHCARE SYSTEM */}
+<div>
+  <label>Preferred Healthcare System</label>
+
+  <p>{summary.healthcareSystem}</p>
+</div>
 
   {/* ALLERGIES */}
   <div>
@@ -1505,6 +1528,27 @@ onClick={() => setScreen("patientPortal")}
     )}
   </div>
 
+{/* AYUSH CLINICAL CONTEXT */}
+<div className="wide">
+  <label>AYUSH Clinical Context</label>
+
+  <div className="ayush-context">
+    <p>
+      <strong>Preferred System:</strong>{" "}
+      {summary.healthcareSystem || "Not reported"}
+    </p>
+
+    <p>
+      <strong>Previous AYUSH Treatment:</strong>{" "}
+      {summary.previousAyushTreatment || "Not reported"}
+    </p>
+
+    <p>
+      <strong>AYUSH Medicines / Products:</strong>{" "}
+      {summary.ayushMedicines || "Not reported"}
+    </p>
+  </div>
+</div>
 
   {/* CURRENT MEDICATION */}
   <div>
@@ -1535,22 +1579,75 @@ onClick={() => setScreen("patientPortal")}
 
                   {documents.length > 0 ? (
                     documents.map((document, index) => (
-                      <div className="doctor-document" key={index}>
-                        <span>📄</span>
-                        <div>
-                          <strong>{document.name}</strong>
-                          <small>
-                            OCR extracted · Date, medicine and investigation
-                            identified
-                          </small>
-                        </div>
-                        <button>View</button>
-                      </div>
+<div className="doctor-document" key={index}>
+  <span>📄</span>
+
+  <div>
+    <strong>{document.name}</strong>
+
+    <small>
+      OCR extracted · Date, medicine and investigation identified
+    </small>
+
+    <small className="document-healthcare-system">
+      Healthcare System: {document.healthcareSystem || "Not reported"}
+    </small>
+  </div>
+
+<button
+  onClick={() => setSelectedDocument(document)}
+>
+  View
+</button>
+</div>
                     ))
                   ) : (
                     <p className="muted">No previous documents uploaded.</p>
                   )}
                 </div>
+
+                {/* DOCUMENT VIEWER */}
+                {selectedDocument && (
+                  <div className="document-viewer-overlay">
+                    <div className="document-viewer">
+
+                      <div className="document-viewer-header">
+                        <div>
+                          <span className="step-label">OCR DOCUMENT</span>
+                          <h2>{selectedDocument.name}</h2>
+                        </div>
+
+                        <button
+                          className="document-close-button"
+                          onClick={() => setSelectedDocument(null)}
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      <div className="document-info">
+                        <p>
+                          <strong>Healthcare System:</strong>{" "}
+                          {selectedDocument.healthcareSystem || "Not reported"}
+                        </p>
+
+                        <p>
+                          <strong>Status:</strong> OCR Processed
+                        </p>
+                      </div>
+
+                      <div className="ocr-content">
+                        <h3>Extracted Information</h3>
+
+                        <div className="ocr-text">
+                          {selectedDocument.extractedText ||
+                            "No OCR text is available for this document."}
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                )}
 
                 <div className="doctor-card">
                   <div className="doctor-card-title">
